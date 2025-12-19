@@ -28,7 +28,7 @@ jobs:
     
     - name: Install nightly rust i686
       run: |
-        rustup toolchain install nightly-2022-11-06-i686-unknown-linux-gnu
+        rustup toolchain install nightly-2022-11-06-i686-unknown-linux-gnu --force-non-host
         rustup default nightly-2022-11-06-i686-unknown-linux-gnu
 
     - name: Build server plugin
