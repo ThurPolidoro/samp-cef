@@ -1,0 +1,38 @@
+name: Build CentOS
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_centos:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build in CentOS 7.5 container
+      run: |
+        docker run --rm -v $PWD:/workspace -w /workspace centos:7.5.1804 bash -c '
+          sed -i "s/mirror.centos.org/vault.centos.org/g" /etc/yum.repos.d/*.repo
+          sed -i "s/^#.*baseurl=http/baseurl=http/g" /etc/yum.repos.d/*.repo
+          sed -i "s/^mirrorlist=http/#mirrorlist=http/g" /etc/yum.repos.d/*.repo
+          sed -i "s|\$releasever|7.5.1804|g" /etc/yum.repos.d/*.repo
+          yum install git curl gcc gcc-c++ make libgcc libgcc.i686 glibc-devel.i686 zlib.i686 zlib -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          export PATH="$HOME/.cargo/bin:$PATH"
+          rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          cargo build --package server --release --target i686-unknown-linux-gnu
+          strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped-centos7.so
+        '
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: cef-centos-7.so
+        path: stripped-centos7.so
