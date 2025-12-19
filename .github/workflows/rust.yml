@@ -20,21 +20,22 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install i686 libs
+    - name: Install nightly rust
       run: |
-        sudo dpkg --add-architecture i386
-        sudo apt-get update
-        sudo apt-get install -y gcc-multilib g++-multilib libc6-dev-i386
+        rustup toolchain install nightly-2022-11-06-x86_64-unknown-linux-gnu --force-non-host
+        rustup default nightly-2022-11-06-x86_64-unknown-linux-gnu
+        rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
     
-    - name: Install nightly rust i686
+    - name: Install i386 deps
       run: |
-        rustup toolchain install nightly-2022-11-06-i686-unknown-linux-gnu --force-non-host
-        rustup default nightly-2022-11-06-i686-unknown-linux-gnu
+        sudo dpkg --add-architecture i386 
+        sudo apt-get update 
+        sudo apt-get install build-essential gcc-multilib g++-multilib -y
 
     - name: Build server plugin
       run: |
-        cargo build --package server --release
-        strip -s target/release/libserver.so -o stripped.so
+        cargo build --package server --release --target i686-unknown-linux-gnu
+        strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped.so
 
     - uses: actions/upload-artifact@v4
       with:
@@ -51,11 +52,12 @@ jobs:
       run: |
         docker run --rm -v $PWD:/workspace -w /workspace ubuntu:18.04 bash -c '
           apt-get update
-          apt-get install build-essential curl git libc6-dev gcc g++ -y
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu
+          apt-get install build-essential gcc-multilib g++-multilib curl git -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
           export PATH="$HOME/.cargo/bin:$PATH"
-          cargo build --package server --release
-          strip -s target/release/libserver.so -o stripped-ubuntu18.so
+          rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          cargo build --package server --release --target i686-unknown-linux-gnu
+          strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped-ubuntu18.so
         '
 
     - uses: actions/upload-artifact@v4
@@ -76,49 +78,19 @@ jobs:
           sed -i "s/^#.*baseurl=http/baseurl=http/g" /etc/yum.repos.d/*.repo
           sed -i "s/^mirrorlist=http/#mirrorlist=http/g" /etc/yum.repos.d/*.repo
           sed -i "s|\$releasever|7.5.1804|g" /etc/yum.repos.d/*.repo
-          yum install git curl gcc gcc-c++ make glibc-devel libgcc zlib -y
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu
+          yum install git curl gcc gcc-c++ make libgcc libgcc.i686 glibc-devel.i686 zlib.i686 zlib -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
           export PATH="$HOME/.cargo/bin:$PATH"
-          cargo build --package server --release
-          strip -s target/release/libserver.so -o stripped-centos7.so
+          rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          cargo build --package server --release --target i686-unknown-linux-gnu
+          strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped-centos7.so
         '
 
     - uses: actions/upload-artifact@v4
       with:
         name: cef-centos-7.so
         path: stripped-centos7.so
-
-  build_server_alma:
-    runs-on: ubuntu-latest
-    container: almalinux:${{ matrix.version }}
-    strategy:
-      matrix:
-        version: [8, 9]
-
-    steps:
-    - name: Install i686 deps
-      run: |
-        dnf install -y epel-release
-        dnf install -y --allowerasing git curl gcc gcc-c++ make glibc-devel libgcc zlib
-
-    - uses: actions/checkout@v4
-
-    - name: Install nightly rust i686
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu
-        export PATH="$HOME/.cargo/bin:$PATH"
-
-    - name: Build server plugin
-      run: |
-        export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build --package server --release
-        strip -s target/release/libserver.so -o stripped.so
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: cef-alma-${{ matrix.version }}.so
-        path: stripped.so
-
+        
   build_server_debian_modern:
     runs-on: ubuntu-latest
     container: debian:${{ matrix.version }}
@@ -127,23 +99,25 @@ jobs:
         version: [11, 12]
 
     steps:
-    - name: Install i686 deps
+    - name: Install i386 deps
       run: |
+        dpkg --add-architecture i386 
         apt-get update
-        apt-get install build-essential curl make git gcc g++ libc6-dev -y
+        apt-get install build-essential curl make gcc-multilib g++-multilib git -y
 
     - uses: actions/checkout@v4
 
-    - name: Install nightly rust i686
+    - name: Install nightly rust
       run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
         export PATH="$HOME/.cargo/bin:$PATH"
+        rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
 
     - name: Build server plugin
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build --package server --release
-        strip -s target/release/libserver.so -o stripped.so
+        cargo build --package server --release --target i686-unknown-linux-gnu
+        strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped.so
 
     - uses: actions/upload-artifact@v4
       with:
@@ -167,11 +141,12 @@ jobs:
           echo "deb http://archive.debian.org/debian-security $CODENAME/updates main" >> /etc/apt/sources.list
           echo "Acquire::Check-Valid-Until \"false\";" > /etc/apt/apt.conf.d/99no-check-valid-until
           apt-get update
-          apt-get install build-essential curl make git gcc g++ libc6-dev -y
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu
+          apt-get install build-essential curl make gcc-multilib g++-multilib git -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
           export PATH="$HOME/.cargo/bin:$PATH"
-          cargo build --package server --release
-          strip -s target/release/libserver.so -o stripped-debian${{ matrix.version }}.so
+          rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          cargo build --package server --release --target i686-unknown-linux-gnu
+          strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped-debian${{ matrix.version }}.so
         '
 
     - uses: actions/upload-artifact@v4
