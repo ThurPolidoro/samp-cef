@@ -27,15 +27,14 @@ jobs:
 
     - name: Install nightly rust
       run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu --force-non-host
         export PATH="$HOME/.cargo/bin:$PATH"
-        rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
 
     - name: Build server plugin
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build --package server --release --target i686-unknown-linux-gnu
-        strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped.so
+        cargo build --package server --release
+        strip -s target/release/libserver.so -o stripped.so
 
     - uses: actions/upload-artifact@v4
       with:
@@ -59,12 +58,11 @@ jobs:
           echo "deb http://archive.debian.org/debian-security $CODENAME/updates main" >> /etc/apt/sources.list
           echo "Acquire::Check-Valid-Until \"false\";" > /etc/apt/apt.conf.d/99no-check-valid-until
           apt-get update
-          apt-get install build-essential curl make gcc-multilib g++-multilib git -y
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          apt-get install build-essential curl git -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu
           export PATH="$HOME/.cargo/bin:$PATH"
-          rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
-          cargo build --package server --release --target i686-unknown-linux-gnu
-          strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped-debian${{ matrix.version }}.so
+          cargo build --package server --release
+          strip -s target/release/libserver.so -o stripped-debian${{ matrix.version }}.so
         '
 
     - uses: actions/upload-artifact@v4
