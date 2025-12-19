@@ -22,12 +22,11 @@ jobs:
           sed -i "s/^#.*baseurl=http/baseurl=http/g" /etc/yum.repos.d/*.repo
           sed -i "s/^mirrorlist=http/#mirrorlist=http/g" /etc/yum.repos.d/*.repo
           sed -i "s|\$releasever|7.5.1804|g" /etc/yum.repos.d/*.repo
-          yum install git curl gcc gcc-c++ make libgcc libgcc.i686 glibc-devel.i686 zlib.i686 zlib -y
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          yum install git curl gcc gcc-c++ make libgcc glibc-devel zlib -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu --force-non-host
           export PATH="$HOME/.cargo/bin:$PATH"
-          rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
-          cargo build --package server --release --target i686-unknown-linux-gnu
-          strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped-centos7.so
+          cargo build --package server --release
+          strip -s target/release/libserver.so -o stripped-centos7.so
         '
 
     - uses: actions/upload-artifact@v4
