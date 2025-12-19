@@ -50,13 +50,13 @@ jobs:
         mv libcef.lib $CEF_PATH/libcef.lib
       shell: bash
 
-    - name: Install nightly rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly-2022-11-06-i686-pc-windows-msvc
-        override: true
-
     - uses: actions/checkout@v4
+
+    - name: Install nightly rust
+      run: |
+        rustup toolchain install nightly-2022-11-06-i686-pc-windows-msvc --force-non-host
+        rustup default nightly-2022-11-06-i686-pc-windows-msvc
+      shell: bash
     
     - name: Build client
       run: |

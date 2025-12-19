@@ -10,34 +10,28 @@ env:
 
 jobs:
   build_ubuntu_modern:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04]
+        image: ['ubuntu:22.04', 'ubuntu:20.04']
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install nightly rust
+    - name: Build in ${{ matrix.image }} container
       run: |
-        rustup toolchain install nightly-2022-11-06-x86_64-unknown-linux-gnu --force-non-host
-        rustup default nightly-2022-11-06-x86_64-unknown-linux-gnu
-        rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
-    
-    - name: Install i386 deps
-      run: |
-        sudo dpkg --add-architecture i386 
-        sudo apt-get update 
-        sudo apt-get install build-essential gcc-multilib g++-multilib -y
-
-    - name: Build server plugin
-      run: |
-        cargo build --package server --release --target i686-unknown-linux-gnu
-        strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped.so
+        docker run --rm -v $PWD:/workspace -w /workspace i386/${{ matrix.image }} bash -c '
+          apt-get update
+          apt-get install build-essential curl git -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu --force-non-host
+          export PATH="$HOME/.cargo/bin:$PATH"
+          cargo build --package server --release
+          strip -s target/release/libserver.so -o stripped.so
+        '
 
     - uses: actions/upload-artifact@v4
       with:
-        name: cef-${{ matrix.os }}.so
+        name: cef-${{ matrix.image }}.so
         path: stripped.so
 
   build_ubuntu_18:
@@ -48,14 +42,13 @@ jobs:
 
     - name: Build in Ubuntu 18.04 container
       run: |
-        docker run --rm -v $PWD:/workspace -w /workspace ubuntu:18.04 bash -c '
+        docker run --rm -v $PWD:/workspace -w /workspace i386/ubuntu:18.04 bash -c '
           apt-get update
-          apt-get install build-essential gcc-multilib g++-multilib curl git -y
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
+          apt-get install build-essential curl git -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2022-11-06-i686-unknown-linux-gnu --force-non-host
           export PATH="$HOME/.cargo/bin:$PATH"
-          rustup target add i686-unknown-linux-gnu --toolchain nightly-2022-11-06-x86_64-unknown-linux-gnu
-          cargo build --package server --release --target i686-unknown-linux-gnu
-          strip -s target/i686-unknown-linux-gnu/release/libserver.so -o stripped-ubuntu18.so
+          cargo build --package server --release
+          strip -s target/release/libserver.so -o stripped-ubuntu18.so
         '
 
     - uses: actions/upload-artifact@v4
